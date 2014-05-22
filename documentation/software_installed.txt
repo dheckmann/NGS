@@ -1,0 +1,9 @@
+# 300414
+installed: 
+- CLC Genomics Workbench via rpm
+- added files for fastqc to usr/local/lib/ and shell script that executes fastqc perlscript to usr/local/bin. shell: "fastqc"
+- added files for trimmomatic 0.32 to usr/local/lib/ and shell script that executes trimmomatic jar via java to usr/local/bin shell: "trimmomatic"
+- compiled velvet (make 'BUNDLEDZLIB=1' ) from git clone with the default setting MAXKMERLENGTH=31. compilation produced multiple warnings. now in usr/local/lib/
+- compiled oases (make 'BUNDLEDZLIB=1' ) from git clone with the default setting MAXKMERLENGTH=64 . compilation produced multiple warnings. Does this need to be changed to 31 as in velvet? usr/local/lib/
+- installed BLAST+ 2.2.29 from precompiled archive
+-compiled BLAT v35 (set BINDIR = usr/local/lib in common.mk), executables in usr/local/lib
