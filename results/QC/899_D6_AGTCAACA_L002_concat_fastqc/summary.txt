@@ -1,0 +1,11 @@
+PASS	Basic Statistics	899_D6_AGTCAACA_L002_concat.fastq
+PASS	Per base sequence quality	899_D6_AGTCAACA_L002_concat.fastq
+PASS	Per sequence quality scores	899_D6_AGTCAACA_L002_concat.fastq
+FAIL	Per base sequence content	899_D6_AGTCAACA_L002_concat.fastq
+FAIL	Per base GC content	899_D6_AGTCAACA_L002_concat.fastq
+PASS	Per sequence GC content	899_D6_AGTCAACA_L002_concat.fastq
+PASS	Per base N content	899_D6_AGTCAACA_L002_concat.fastq
+PASS	Sequence Length Distribution	899_D6_AGTCAACA_L002_concat.fastq
+FAIL	Sequence Duplication Levels	899_D6_AGTCAACA_L002_concat.fastq
+WARN	Overrepresented sequences	899_D6_AGTCAACA_L002_concat.fastq
+WARN	Kmer Content	899_D6_AGTCAACA_L002_concat.fastq

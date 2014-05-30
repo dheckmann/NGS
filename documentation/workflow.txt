@@ -1,0 +1,10 @@
+# 230514
+- reads are already de-multiplexed, no action needed here
+- unzipped and concatenated data for each plant with zcat 
+- count reads:
+	find | grep concat | ~/Documents/NGS/scripts/fastq_Readcounter.sh > ~/Documents/NGS/results/number_of_reads.txt
+
+- conduct QC, write results to NGS/results
+	set +m; shopt -s lastpipe; string="";ind | grep concat |while read LINE; do string="$string $LINE"; done; fastqc -t 4 --nogroup -o ~/Documents/NGS/results/QC/ $string
+
+# 300514

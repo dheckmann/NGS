@@ -1,0 +1,11 @@
+PASS	Basic Statistics	899_E5_GTGAAACG_L003_concat.fastq
+PASS	Per base sequence quality	899_E5_GTGAAACG_L003_concat.fastq
+PASS	Per sequence quality scores	899_E5_GTGAAACG_L003_concat.fastq
+FAIL	Per base sequence content	899_E5_GTGAAACG_L003_concat.fastq
+FAIL	Per base GC content	899_E5_GTGAAACG_L003_concat.fastq
+PASS	Per sequence GC content	899_E5_GTGAAACG_L003_concat.fastq
+PASS	Per base N content	899_E5_GTGAAACG_L003_concat.fastq
+PASS	Sequence Length Distribution	899_E5_GTGAAACG_L003_concat.fastq
+FAIL	Sequence Duplication Levels	899_E5_GTGAAACG_L003_concat.fastq
+WARN	Overrepresented sequences	899_E5_GTGAAACG_L003_concat.fastq
+WARN	Kmer Content	899_E5_GTGAAACG_L003_concat.fastq

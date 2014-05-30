@@ -1,0 +1,14 @@
+number of Reads (lines/4) in File ./GTGAAACG_S10cultivated/899_E5_GTGAAACG_L003_concat.fastq
+35167680
+number of Reads (lines/4) in File ./CCGTCCCG_S6wt/899_E3_CCGTCCCG_L003_concat.fastq
+51640252
+number of Reads (lines/4) in File ./CGATGTAT_C11cultivated/899_E6_CGATGTAT_L003_concat.fastq
+44446408
+number of Reads (lines/4) in File ./ATGTCAGA_S4wt/899_E2_ATGTCAGA_L003_concat.fastq
+45447682
+number of Reads (lines/4) in File ./AGTTCCGT_S3wt/899_E1_AGTTCCGT_L003_concat.fastq
+30586182
+number of Reads (lines/4) in File ./AGTCAACA_S1wt/899_D6_AGTCAACA_L002_concat.fastq
+57738966
+number of Reads (lines/4) in File ./GTCCGCAC_S7cultivated/899_E4_GTCCGCAC_L003_concat.fastq
+59362678

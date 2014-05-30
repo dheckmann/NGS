@@ -7,3 +7,4 @@ installed:
 - compiled oases (make 'BUNDLEDZLIB=1' ) from git clone with the default setting MAXKMERLENGTH=64 . compilation produced multiple warnings. Does this need to be changed to 31 as in velvet? usr/local/lib/
 - installed BLAST+ 2.2.29 from precompiled archive
 -compiled BLAT v35 (set BINDIR = usr/local/lib in common.mk), executables in usr/local/lib
+- installed fastx via synaptic  (version 0.0.14-1)
