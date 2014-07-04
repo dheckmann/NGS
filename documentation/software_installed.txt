@@ -8,3 +8,6 @@ installed:
 - installed BLAST+ 2.2.29 from precompiled archive
 -compiled BLAT v35 (set BINDIR = usr/local/lib in common.mk), executables in usr/local/lib
 - installed fastx via synaptic  (version 0.0.14-1)
+- compiled trinity and moved to usr/local/lib/. in order for symbolic link to work, trinity script had to be modified Bin -> RealBin
+- installed bowtie 1.0.1 to usr/local/lib, since trinity requires bowtie
+

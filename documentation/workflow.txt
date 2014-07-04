@@ -1,10 +1,126 @@
 # 230514
+
+Info about received data
+
+- paired-end illumina reads, prepped with TruSeq2 
 - reads are already de-multiplexed, no action needed here
+- R1 and R2 in the fastq files correspond to paired reads (as shown in the header, e.g. 2:N:0:AGTCAACA)
+- phred33 quality encoding => Illumina pipeline > 1.8
+- Median library size probably 300nt (Andrea)
+
+################################################################################################
+
 - unzipped and concatenated data for each plant with zcat 
 - count reads:
 	find | grep concat | ~/Documents/NGS/scripts/fastq_Readcounter.sh > ~/Documents/NGS/results/number_of_reads.txt
 
+################################################################################################
+# QC
+
 - conduct QC, write results to NGS/results
 	set +m; shopt -s lastpipe; string="";ind | grep concat |while read LINE; do string="$string $LINE"; done; fastqc -t 4 --nogroup -o ~/Documents/NGS/results/QC/ $string
 
+- QC shows nonrandom bases in the first 10 bases. The pattern is the same for both directions of paired reads (tested in 899_D6_AGTCAACA_L002). This is a well known problem (http://nar.oxfordjournals.org/content/38/12/e131.full, http://seqanswers.com/forums/showthread.php?t=11843)
+
+
+################################################################################################
+# TRIMMING
+
 # 300514
+
+#trimmomatic expects one file of forwar and one of reverse reads, so concatenate first (for now manually):
+
+cat 899_D6_AGTCAACA_L002_R2_001.fastq.gz 899_D6_AGTCAACA_L002_R2_002.fastq.gz > 899_D6_AGTCAACA_L002_R2_concat.fastq.gz
+
+# call to trimmomatic:
+
+java -jar /usr/local/lib/Trimmomatic-0.32/trimmomatic-0.32.jar PE -threads 4 899_D6_AGTCAACA_L002_R1_concat.fastq.gz 899_D6_AGTCAACA_L002_R2_concat.fastq.gz fw_p fw_up rv_p rv_up ILLUMINACLIP:/usr/local/lib/Trimmomatic-0.32/adapters/TruSeq2-PE.fa:2:40:12 LEADING:3 TRAILING:3 HEADCROP:15 MAXINFO:40:0.4 MINLEN:36 
+
+# loop for trimmomatic:
+
+ls -d */ | while read FOLDER; 
+do 
+cd $FOLDER; 
+R1=$(ls|grep R1_concat);
+R2=$(ls|grep R2_concat);
+echo $R1;echo $R2;cd ..;
+java -jar /usr/local/lib/Trimmomatic-0.32/trimmomatic-0.32.jar PE -threads 4 899_D6_AGTCAACA_L002_R1_concat.fastq.gz 899_D6_AGTCAACA_L002_R2_concat.fastq.gz fw_p fw_up rv_p rv_up ILLUMINACLIP:/usr/local/lib/Trimmomatic-0.32/adapters/TruSeq2-PE.fa:2:40:12 LEADING:3 TRAILING:3 HEADCROP:15 MAXINFO:40:0.4 MINLEN:36 ;
+done;
+
+# 1.7.14
+
+ls -d */ |
+while read FOLDER; do 
+	trimFolder="trimHC";	#flag to name trimmed files
+	trimTag="trim_HC"; 	#flag to name trimmed folders	
+	cd $FOLDER; 
+	mkdir $trimFolder;
+
+	R1=$(ls|grep R1_concat); # full file names
+	R2=$(ls|grep R2_concat);
+	R1_cut=$(echo $R1 | cut -d'.' -f 1);	# filenames wo extension, use for output files
+	R2_cut=$(echo $R2 | cut -d'.' -f 1);
+	
+	echo $R1;
+	echo $R2;
+	# Illuminaclip with:
+	#	 seed mismatch =2, ie the seed alignment of adapter-section to the read is allowed 2 mismatches in order to continue elongation.
+	# 	palindromeClipThreshold = 40 , ie the alignment cutoff for reads with in silico ligated adapters. This step detects readthrough.
+	#	simpleClipThreshold=12, ie the cutoff for simple adapter 
+	# Maxinfo with:
+	#	target length = 40, cutoff for read length
+	#	strictness
+	# Leading:
+	# 	remove leading low quality bases
+	# Trailing:
+	# 	remove trailing low quality bases
+	java -jar /usr/local/lib/Trimmomatic-0.32/trimmomatic-0.32.jar PE -threads 4 -trimlog $trimFolder"/"$R1_cut".log"  $R1 $R2 $trimFolder"/"$R1_cut"_"$trimTag"_p.fastq.gz" $trimFolder"/"$R1_cut"_"$trimTag"_up.fastq.gz" $trimFolder"/"$R2_cut"_"$trimTag"_p.fastq.gz" $trimFolder"/"$R2_cut"_"$trimTag"_up.fastq.gz" ILLUMINACLIP:/usr/local/lib/Trimmomatic-0.32/adapters/TruSeq2-PE.fa:2:40:12 LEADING:3 TRAILING:3 HEADCROP:15 MAXINFO:40:0.4 MINLEN:36 2> $trimFolder"/out_"$trimTag".log"; # 2> catches status and warnings from Java
+	cd ..;
+done;
+
+# also performed without headcrop as:	trimFolder="trim";	trimTag="trim"; 
+
+# checked sensitivity to the strictness parameter for AGTCAACA_S1wt. no difference in number of surviving pairs found for 0.4 and 0.6 strictness.
+
+# 2.7.14:
+
+find -name  out_trim_HC.log | xargs cat > trim_result_HC.txt
+find -name  out_trim.log | xargs cat > trim_result.txt
+
+#####################################################################################################
+# Assembly
+
+# 3.7.14
+
+# CLC GW import for S1 and S3 with and wo HC. using 250 to 350 distance of pairs. checked "remove failed reads" option.
+
+
+# Trinity call:
+
+Trinity --seqType fq --JM 30G --left reads_1.fq  --right reads_2.fq --CPU 6
+
+
+#sleep 7200;ls -d */ |
+ls -d AGTCAA*/|
+while read FOLDER; do 
+	trimFolder="trimHC";	#flag to name trimmed files
+	trimTag="trim_HC"; 	#flag to name trimmed folders	
+	assemblyFolder=$trimFolder"_Ass_Tri";
+
+	cd $FOLDER$trimFolder; 
+
+	trimmed_R1=$(ls *"R1"*"_"$trimTag"_p.fastq.gz");
+	trimmed_R2=$(ls *"R2"*"_"$trimTag"_p.fastq.gz");
+	
+	echo $trimmed_R1;
+	echo $trimmed_R2;
+
+	mkdir $assemblyFolder;
+	
+	#R1= forward, R2 = reverse (?)
+	Trinity --seqType fq --JM 30G --left trimmed_R1 --right trimmed_R2 --CPU 6 --output $assemblyFolder;
+	
+	cd ..; 
+	cd ..;
+done;
+
