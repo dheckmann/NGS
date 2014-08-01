@@ -99,9 +99,9 @@ find -name  out_trim.log | xargs cat > trim_result.txt
 
 Trinity --seqType fq --JM 30G --left reads_1.fq  --right reads_2.fq --CPU 6
 
-
-#sleep 7200;ls -d */ |
-ls -d AGTCAA*/|
+#sudo -s
+#ls -d */|
+cat to_Assemble_Trinity.txt|
 while read FOLDER; do 
 	trimFolder="trimHC";	#flag to name trimmed files
 	trimTag="trim_HC"; 	#flag to name trimmed folders	
@@ -118,9 +118,278 @@ while read FOLDER; do
 	mkdir $assemblyFolder;
 	
 	#R1= forward, R2 = reverse (?)
-	Trinity --seqType fq --JM 30G --left trimmed_R1 --right trimmed_R2 --CPU 6 --output $assemblyFolder;
+	Trinity --seqType fq --JM 20G --left $trimmed_R1 --right $trimmed_R2 --CPU 8 --output $assemblyFolder > $assemblyFolder"/out_"$trimTag".log";
 	
+	#/usr/local/lib/trinityrnaseq_r20140413p1/util/TrinityStats.pl $assemblyFolder/both.fa > $assemblyFolder"/out_"$trimTag".log"
+
 	cd ..; 
 	cd ..;
 done;
+
+# 9.7.14
+
+# collect stats from all seven Trinity assemblies:
+
+find . -name Trinity.fasta -exec echo '{}' \; -exec /home/david/lib/trinityrnaseq_r20140413p1/util/TrinityStats.pl '{}' \; -exec perl ~/Documents/NGS/scripts/count_fasta.pl -i 1000 '{}' \; >Trinity_HC_Result.txt 
+
+# 11.7.14
+
+perl ~/Documents/NGS/scripts/count_fasta.pl -i 1000 ~/Documents/NGS_Data/RivkaData/AGTCAACA_S1wt/trimHC/trimHC_Ass_Tri/Trinity.fasta; 
+perl ~/Documents/NGS/scripts/count_fasta.pl -i 1000 ~/Documents/NGS_Data/RivkaData/ATGTCAGA_S4wt/trimHC/trimHC_Ass_Tri/Trinity.fasta;
+
+
+#based on N50, S4 seems to yield the best assemblies. for headcropped reads, Trinity yields N50 of 1218, CLC 990. contig cutoff does not bias this comparison since both assemblers use a cutoff of 200. apparently, the difference in contig number (116,332 vs 78,266) is mainly caused by small contigs (87,612 vs ~47,000 in the 200-1000 nt pool)
+
+
+#####################################################################################################################################################
+# Annotation
+
+#make blast db:
+makeblastdb -in TAIR10_pep_20110103_representative_gene_model_updated -dbtype prot
+
+#Building a new DB, current time: 07/11/2014 14:37:06
+#New DB name:   TAIR10_pep_20110103_representative_gene_model_updated
+#New DB title:  TAIR10_pep_20110103_representative_gene_model_updated
+#Sequence type: Protein
+#Keep Linkouts: T
+#Keep MBits: T
+#Maximum file size: 1000000000B
+#Adding sequences from FASTA; added 27416 sequences in 1.01265 seconds.
+
+
+
+# Trinity fasta induces problems with blastx because some headers are too long. 
+# Prune those headers:
+
+cat to_Prune_Trinity_headers.txt|
+while read inPATH; do 
+	queryFolder=$(dirname $inPATH);
+	cd $queryFolder;
+	awk '{print $1,$2}' Trinity.fasta > Trinity_pruned.fasta; # only keep transcript identifier and length
+	cd -;
+done;
+
+export BLASTDB=/home/david/Documents/Genomes/Arabidopsis_thaliana/ #Folder that contains BLAST files
+#cat to_Annotate_pruned.txt| # around 150714
+#echo '/home/david/Documents/NGS_Data/RivkaData/ATGTCAGA_S4wt/trimHC/trimHC_Ass_Tri/Trinity_pruned.fasta'|
+cat to_Annotate_S1_S4.txt|
+while read inPATH; do 
+	#cut $FOLDER -d '/'
+	annotFolderName="Annotation";
+	queryFile=$(basename $inPATH);
+	queryFileCut=$(basename $inPATH| awk -F. '{print $1}');
+	queryFolder=$(dirname $inPATH);
+	
+	echo $inPATH;
+	cd $queryFolder;	
+	if [[ ! -e $annotFolderName ]]; then mkdir $annotFolderName;fi;
+
+	# outfmt: 
+	#blastx -db TAIR10_pep_20110103_representative_gene_model_updated -query $queryFile -out $annotFolderName"/"$queryFileCut"_At_xblast.txt" -evalue 1e-4 -outfmt 6 -max_target_seqs 1 -num_threads 7 > blast_out.txt; # around 150714
+	
+	blat ~/Documents/Genomes/Arabidopsis_thaliana/cds/TAIR10_cds_20110103_representative_gene_model_updated $queryFile -q=dnax -t=dnax $annotFolderName"/"$queryFileCut"_At_blat.psl" & # 230714
+	
+	cd -;
+done;
+
+#230714
+# of the headcropped contigs 100*43334/78266=55% of the CLC and 100*62235/116332=53% of the contigs mapped to At peptides using blastx (evalues<1e-4).
+
+# the minimal genome was only provided as DNA, use the TAIR ids to map to TAIR 10 peptides and cds:
+david@david-NGS:~/Documents/Genomes/Arabidopsis_thaliana/minimal_AB$ subset_fasta.py ../pep/TAIR10_pep_20110103_representative_gene_model_updated only_IDs.txt > pep_minimal_TAIR10.fasta
+david@david-NGS:~/Documents/Genomes/Arabidopsis_thaliana/minimal_AB$ subset_fasta.py ../cds/TAIR10_cds_20110103_representative_gene_model_updated only_IDs.txt > cds_minimal_TAIR10.fasta
+# this yields 21357 matches for pep and cds out of 22010 DNA sequences (continue with this? ie repeat the blastx mapping ? )
+
+# append annotation to FASTA header:
+
+cat sequences.fasta | AppendHeaderToFasta.pl annotation.txt | less
+cat Trinity_pruned_test.fasta | ~/Documents/NGS/scripts/AppendHeaderToFasta.
+pl ./Annotation/Trinity_pruned_At_xblast.txt 
+
+########################################################################################################################################
+# backmapping / quantification
+# 160714
+
+# to do 230714:
+# - map reverse reads as well 
+# - decide between blastx and blat
+# - map to contigs as well 
+
+# map trimmed reads (not contigs) to At genome. Andrea used BLAT earlier, but mainly out of performance reasons. Use blastx here. 
+# start with only the FORWARD reads that were used for the assembly (S1 and S4 HC and wo HC) (160714)
+# Brassicales and Asterales branch about 120my ago (early Cretaceous) Bell 2009
+
+#180714: try different evalues on S1 trim
+
+export BLASTDB=/home/david/Documents/Genomes/Arabidopsis_thaliana/ #Folder that contains BLAST files
+DATE=`date +"%d%m%Y"`;
+cat to_Backmap.txt| # 160714
+#echo /home/david/Documents/NGS_Data/RivkaData/AGTCAACA_S1wt/trim/899_D6_AGTCAACA_L002_R1_concat_trim_p.fastq |
+while read inPATH; do 
+	mappingFolderName="map_to_Genome";
+	queryFile=$(basename $inPATH);
+	queryFileCut=$(basename $inPATH| awk -F. '{print $1}');
+	queryFolder=$(dirname $inPATH);
+	
+	cd $queryFolder;	
+	if [[ ! -e $mappingFolderName ]]; then mkdir $mappingFolderName;fi;
+	
+	# check if conversion to fasta is necessary
+	pwd;
+	if [[ ! -e $queryFileCut".fasta" && ! -e $queryFileCut".fa" ]]; then 
+	echo "converting $queryFile to FASTA."; # no indentation possible !?
+	fastq_to_fasta -Q33 -i $queryFile -o $queryFileCut".fasta";
+	fi;
+
+	#blastx -db TAIR10_pep_20110103_representative_gene_model_updated -query $queryFileCut".fasta" -out $mappingFolderName"/"$queryFileCut"_At_xblast.txt" -evalue 1e-4 -outfmt 6 -max_target_seqs 1 -num_threads 7 > blast_out.txt; # ran at 160714. but produced only 20% of mapped reads for S1 trim and S1 trimHC 
+
+#blastx -db TAIR10_pep_20110103_representative_gene_model_updated -query $queryFileCut".fasta" -out $mappingFolderName"/"$queryFileCut"_At_xblast_1e-3.txt" -evalue 1e-3 -outfmt 6 -max_target_seqs 1 -num_threads 7; # ran on 180714
+
+#	blastx -db TAIR10_pep_20110103_representative_gene_model_updated -query $queryFileCut".fasta" -out $mappingFolderName"/"$queryFileCut"_At_xblast_1e-2.txt" -evalue 1e-2 -outfmt 6 -max_target_seqs 1 -num_threads 7; # ran on 180714
+
+	tblastx -db ~/Documents/Genomes/Arabidopsis_thaliana/minimal_AB/DNA_minimal_TAIR9.fasta -query $queryFileCut".fasta" -out $mappingFolderName"/"$queryFileCut"_At_min_xblast.txt" -evalue 1e-4 -outfmt 6 -max_target_seqs 1 -num_threads 7 > blast_out.txt;
+
+	#blat ~/Documents/Genomes/Arabidopsis_thaliana/minimal_AB/DNA_minimal_TAIR9.fasta $queryFileCut".fasta" -q=dnax -t=dnax $mappingFolderName"/"$queryFileCut"_At_blat_"$DATE".psl" &
+	
+	cd -;
+done;>"blat_out_"$DATE".txt"
+
+# one sample (~5e7 reads) takes about a day
+
+# 210714
+# results of mapping of S1 against At with blastx using varying evalues:
+david@david-NGS:~/Documents/NGS_Data/RivkaData/AGTCAACA_S1wt/trim/map_to_Genome$ ls |xargs wc -l
+   6853871 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-2.txt
+   6432124 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-3.txt
+   6014559 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4.txt
+
+# S1_R1 contains  27882768 reads after trimming => only 24% mapped to At for eval<1e-2
+
+# check for the amount of chloroplast genes that were hit. these start with ATCG in the TAIR ids (note the sort before the use of uniq):
+cut -f2 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4.txt | grep -i ^ATCG | sort |uniq -c | wc -l
+76
+
+# workflow 
+
+head 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4_count.txt |sed 's/^\s*//'| while read LINE; do lineCount=$(cut -f1 -d ' ');count=$(($lineCount+$count));done
+
+# 250714
+# - concerning above analyses on the to_Backmap.txt files: use minimal At genome instead of usual TAIR version. use tblastx to do this
+# -
+
+
+cat to_Backmap_blat_parse_best.txt| # 250714
+while read inPATH; do 
+	queryFile=$(basename $inPATH); queryFileCut=$(basename $inPATH| awk -F. '{print $1}'); queryFolder=$(dirname $inPATH);
+	cd $queryFolder;	
+	pwd;
+	
+	# cut number of mathces, queryname, target name, | sort by target name and then by number of matches | 
+	cut -f1,10,14 $queryFile | sort -k2,2 -k1,1nr | single_best_blat_hit.pl > $queryFileCut"_best_annotation.txt";
+	 
+	cd -;
+done;
+
+david@david-NGS:~/Documents/NGS_Data/RivkaData$ find -name *min_blat_23072014.psl_best_annotation.txt | xargs wc -l
+   8198286 ./ATGTCAGA_S4wt/trim/map_to_Genome/899_E2_ATGTCAGA_L003_R1_concat_trim_p_At_min_blat_23072014.psl_best_annotation.txt
+   7317736 ./ATGTCAGA_S4wt/trimHC/map_to_Genome/899_E2_ATGTCAGA_L003_R1_concat_trim_HC_p_At_min_blat_23072014.psl_best_annotation.txt
+   9908324 ./AGTCAACA_S1wt/trim/map_to_Genome/899_D6_AGTCAACA_L002_R1_concat_trim_p_At_min_blat_23072014.psl_best_annotation.txt
+   8809990 ./AGTCAACA_S1wt/trimHC/map_to_Genome/899_D6_AGTCAACA_L002_R1_concat_trim_HC_p_At_min_blat_23072014.psl_best_annotation.txt
+
+
+S4_trim: 8198286÷21756269 = 38%
+S4_trimHC: 7317736÷21652840 = 34%
+S1_trim: 9908324÷27882768 = 36%
+S1_trimHC: 8809990÷27754961 = 32%
+
+##########################
+# 250714
+# map reads to contigs:
+
+DATE=`date +"%d%m%Y"`;
+cat to_Backmap_to_Assemblies.txt| # 250714
+while read inPATH; do 
+	#echo "inPATH: $inPATH";
+	# extract the comma-seperated input:
+	#echo $inPATH | cut -f 1 -d ',';
+	readsPath=$(echo $inPATH | cut -f 1 -d ',');
+	assemblyPath=$(echo $inPATH | cut -f 2 -d ',');
+
+	echo ""; echo "";
+	echo "readsPath: $readsPath assemblyPath: $assemblyPath";
+	echo ""; echo "";
+
+	mappingFolderName="map_to_Assembly";
+	queryFile=$(basename $readsPath);
+	queryFileCut=$(basename $readsPath| awk -F. '{print $1}');
+	queryFolder=$(dirname $readsPath);
+
+	targetFile=$(basename $assemblyPath);
+	targetFileCut=$(basename $assemblyPath| awk -F. '{print $1}');
+	targetFolder=$(dirname $assemblyPath);
+	
+	# extract the folder name where the assembly is found 
+	assemblyFolder=$(echo $targetFolder | rev| cut -f 1 -d '/'|rev)
+
+	cd $targetFolder;
+	echo 	"targetFolder: "$targetFolder" targetFileCut: "$targetFileCut;
+
+	# check if blast indices have to be created for the assembly. CLC produces *.fa files, so account for that.
+	if [[ ! -e $targetFolder"/"$targetFile".nsq" ]]; then 
+	echo "makeblastdb necessary";
+	if [[ -e $targetFolder"/"$targetFileCut".fasta" ]]; then
+	echo "running makeblastdb on $targetFile"; 
+	makeblastdb -in $targetFileCut".fasta" -dbtype nucl;
+	elif [[ -e $targetFolder"/"$targetFileCut".fa" ]]; then
+	echo "running makeblastdb on $targetFile"; 
+	makeblastdb -in $targetFileCut".fa" -dbtype nucl;
+	fi;
+	fi;
+
+	cd $queryFolder;	
+	if [[ ! -e $mappingFolderName ]]; then mkdir $mappingFolderName;fi;
+	
+	# check if conversion to fasta is necessary
+	#pwd;
+	if [[ ! -e $queryFileCut".fasta" && ! -e $queryFileCut".fa" ]]; then 
+	echo "converting $queryFile to FASTA."; # no indentation possible !?
+	fastq_to_fasta -Q33 -i $queryFile -o $queryFileCut".fasta";
+	fi;
+
+	#tblastx -db ~/Documents/Genomes/Arabidopsis_thaliana/minimal_AB/DNA_minimal_TAIR9.fasta -query $queryFileCut".fasta" -out $mappingFolderName"/"$queryFileCut"_At_min_xblast.txt" -evalue 1e-4 -outfmt 6 -max_target_seqs 1 -num_threads 7 > blast_out.txt;
+	
+	#blat $assemblyPath $queryFileCut".fasta" -q=dnax -t=dnax $mappingFolderName"/"$queryFileCut"_Assembly"$DATE".psl" & # ran on 250714, apparently this overwrites maps of same query to different assemblies
+	blat $assemblyPath $queryFileCut".fasta" -q=dnax -t=dnax $mappingFolderName"/"$queryFileCut"_"$assemblyFolder"_"$DATE".psl" &
+	
+	# keep the number of jobs lower than 5
+	if [[ $(ps -ef | grep blat| wc -l) > 5 ]]; then 
+	wait;
+	fi;
+
+	cd -;
+done;>"blat_out_"$DATE".txt"
+
+# one sample (~5e7 reads) takes about a day
+
+# 210714
+# results of mapping of S1 against At with blastx using varying evalues:
+david@david-NGS:~/Documents/NGS_Data/RivkaData/AGTCAACA_S1wt/trim/map_to_Genome$ ls |xargs wc -l
+   6853871 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-2.txt
+   6432124 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-3.txt
+   6014559 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4.txt
+
+# S1_R1 contains  27882768 reads after trimming => only 24% mapped to At for eval<1e-2
+
+# check for the amount of chloroplast genes that were hit. these start with ATCG in the TAIR ids (note the sort before the use of uniq):
+cut -f2 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4.txt | grep -i ^ATCG | sort |uniq -c | wc -l
+76
+
+# workflow 
+
+head 899_D6_AGTCAACA_L002_R1_concat_trim_p_At_xblast_1e-4_count.txt |sed 's/^\s*//'| while read LINE; do lineCount=$(cut -f1 -d ' ');count=$(($lineCount+$count));done
+
+
+
+
+
 

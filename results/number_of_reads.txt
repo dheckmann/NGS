@@ -1,3 +1,5 @@
+# sum of forward and reverse reads:
+
 number of Reads (lines/4) in File ./GTGAAACG_S10cultivated/899_E5_GTGAAACG_L003_concat.fastq
 35167680
 number of Reads (lines/4) in File ./CCGTCCCG_S6wt/899_E3_CCGTCCCG_L003_concat.fastq

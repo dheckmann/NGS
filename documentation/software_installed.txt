@@ -1,13 +1,14 @@
 # 300414
 installed: 
-- CLC Genomics Workbench via rpm
+- CLC Genomics Workbench via rpm. # 11.7.14 updated with  sudo rpm -Uvh ~/Downloads/CLCGenomicsWorkbench_7_0_4_64.rpm
 - added files for fastqc to usr/local/lib/ and shell script that executes fastqc perlscript to usr/local/bin. shell: "fastqc"
 - added files for trimmomatic 0.32 to usr/local/lib/ and shell script that executes trimmomatic jar via java to usr/local/bin shell: "trimmomatic"
 - compiled velvet (make 'BUNDLEDZLIB=1' ) from git clone with the default setting MAXKMERLENGTH=31. compilation produced multiple warnings. now in usr/local/lib/
 - compiled oases (make 'BUNDLEDZLIB=1' ) from git clone with the default setting MAXKMERLENGTH=64 . compilation produced multiple warnings. Does this need to be changed to 31 as in velvet? usr/local/lib/
-- installed BLAST+ 2.2.29 from precompiled archive
+- installed BLAST+ 2.2.29 from precompiled archive. set $BLASTDB to: export BLASTDB="$HOME/Documents/Genomes"
+. 
 -compiled BLAT v35 (set BINDIR = usr/local/lib in common.mk), executables in usr/local/lib
 - installed fastx via synaptic  (version 0.0.14-1)
-- compiled trinity and moved to usr/local/lib/. in order for symbolic link to work, trinity script had to be modified Bin -> RealBin
+- compiled trinity and moved to usr/local/lib/. in order for symbolic link to work, trinity script had to be modified Bin -> RealBin. Since trinity seems to edit its own files, it needs root rights to run. thus recomplied in ~/lib/ and changed link in /usr/local/bin.
 - installed bowtie 1.0.1 to usr/local/lib, since trinity requires bowtie
 
